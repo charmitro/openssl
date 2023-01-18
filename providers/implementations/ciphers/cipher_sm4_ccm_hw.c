@@ -13,16 +13,19 @@
 
 #include "cipher_sm4_ccm.h"
 
+#define SM4_HW_CCM_SET_KEY_FN(fn_set_enc_key, fn_blk)                          \
+    fn_set_enc_key(key, &actx->ks.ks);                                         \
+    CRYPTO_ccm128_init(&ctx->ccm_ctx, ctx->m, ctx->l, &actx->ks.ks,            \
+                       (block128_f)fn_blk);                                    \
+    ctx->str = NULL;                                                           \
+    ctx->key_set = 1;
+
 static int ccm_sm4_initkey(PROV_CCM_CTX *ctx,
                            const unsigned char *key, size_t keylen)
 {
     PROV_SM4_CCM_CTX *actx = (PROV_SM4_CCM_CTX *)ctx;
 
-    ossl_sm4_set_key(key, &actx->ks.ks);
-    CRYPTO_ccm128_init(&ctx->ccm_ctx, ctx->m, ctx->l, &actx->ks.ks,
-                       (block128_f)ossl_sm4_encrypt);
-    ctx->str = NULL;
-    ctx->key_set = 1;
+    SM4_HW_CCM_SET_KEY_FN(ossl_sm4_set_key, ossl_sm4_encrypt);
     return 1;
 }
 
@@ -35,7 +38,11 @@ static const PROV_CCM_HW ccm_sm4 = {
     ossl_ccm_generic_gettag
 };
 
+#if defined(__riscv) && __riscv_xlen == 64
+# include "cipher_sm4_ccm_hw_rv64i.inc"
+#else
 const PROV_CCM_HW *ossl_prov_sm4_hw_ccm(size_t keybits)
 {
     return &ccm_sm4;
 }
+#endif
