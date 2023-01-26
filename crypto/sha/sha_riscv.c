@@ -26,3 +26,20 @@ void sha256_block_data_order(SHA256_CTX *ctx, const void *in, size_t num)
         sha256_block_data_order_c(ctx, in, num);
     }
 }
+
+void sha512_block_data_order_zvknhb_lmul1(void *ctx, const void *in, size_t num);
+void sha512_block_data_order_zvknhb_lmul2(void *ctx, const void *in, size_t num);
+void sha512_block_data_order_c(void *ctx, const void *in, size_t num);
+void sha512_block_data_order(SHA512_CTX *ctx, const void *in, size_t num);
+
+void sha512_block_data_order(SHA512_CTX *ctx, const void *in, size_t num)
+{
+    if (RISCV_HAS_ZVKB_AND_ZVKNHB()) {
+        if (riscv_vlen() >= 256)
+            sha512_block_data_order_zvknhb_lmul1(ctx, in, num);
+        else if (riscv_vlen() >= 128)
+            sha512_block_data_order_zvknhb_lmul2(ctx, in, num);
+    } else {
+        sha512_block_data_order_c(ctx, in, num);
+    }
+}
